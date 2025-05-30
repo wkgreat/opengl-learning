@@ -1,8 +1,11 @@
 /*
-    纹理
+    变换
 */
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 #include <glad/glad.h>
@@ -22,7 +25,7 @@ GLFWwindow *glInitWindow()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // glfw窗口
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "opengl-learning demo5", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "opengl-learning demo6", NULL, NULL);
     if (window == NULL)
     {
         std::cerr << "Failed to create GLFW window" << std::endl;
@@ -115,7 +118,7 @@ int main()
 
     // 读取纹理数据并设置
     int imageWidth, imageHeight, nChannels;
-    unsigned char *data = stbi_load("container.jpg", &imageWidth, &imageHeight, &nChannels, 0);
+    unsigned char *data = stbi_load("assets/container.jpg", &imageWidth, &imageHeight, &nChannels, 0);
     if (data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -138,7 +141,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    data = stbi_load("awesomeface.png", &imageWidth, &imageHeight, &nChannels, 0);
+    data = stbi_load("assets/awesomeface.png", &imageWidth, &imageHeight, &nChannels, 0);
     if (data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -155,6 +158,11 @@ int main()
     // glUniform1i(glGetUniformLocation(shader.getId(), "u_texture2"), 1);
     shader.setInt("u_texture2", 1); // u_texture2使用纹理单元2
 
+    // 矩阵变换
+    glm::mat4 modelMtx = glm::mat4(1.0f);
+    // 获取u_modelMtx位置
+    unsigned int u_modelMtx = glGetUniformLocation(shader.getId(), "u_modelMtx");
+
     // 窗口主循环
     while (!glfwWindowShouldClose(window))
     {
@@ -162,6 +170,15 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(VAO);
+
+        // 沿x轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(1.0, 0.0, 0.0));
+        // 沿y轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 1.0, 0.0));
+        // 沿z轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 0.0, 1.0));
+        // 设置获取u_modelMtx
+        glUniformMatrix4fv(u_modelMtx, 1, GL_FALSE, glm::value_ptr(modelMtx));
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glfwSwapBuffers(window); // 交换缓冲
