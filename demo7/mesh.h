@@ -22,8 +22,34 @@ public:
         stbi_uc *image = stbi_load(path.c_str(), &width, &height, &nChannels, 0);
         std::shared_ptr<stbi_uc> ptr(image, [](stbi_uc *p)
                                      { stbi_image_free(p); });
+        this->data = ptr;
     }
     ~Texture() = default;
+    GLuint bindTexture(Shader &shader, std::string uniform, int textureUnit)
+    {
+        if (data == nullptr)
+        {
+            std::cout << "Texture is NULL." << std::endl;
+        }
+
+        GLuint id;
+
+        glGenTextures(1, &id);            // 生成纹理缓冲
+        glActiveTexture(GL_TEXTURE0);     // 激活纹理单元0
+        glBindTexture(GL_TEXTURE_2D, id); // 绑定纹理
+        // 纹理设置
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        // 读取纹理数据并设置
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_BYTE, this->data.get());
+        glGenerateMipmap(GL_TEXTURE_2D);
+        shader.setInt(uniform, textureUnit);
+
+        return id;
+    }
 
     void setTexture(std::shared_ptr<stbi_uc> data, int width, int height)
     {

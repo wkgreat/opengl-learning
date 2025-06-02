@@ -13,8 +13,8 @@
 
 #include "mesh.h"
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
+int WIDTH = 800;
+int HEIGHT = 600;
 
 GLFWwindow *glInitWindow()
 {
@@ -45,8 +45,12 @@ GLFWwindow *glInitWindow()
     // 设置viewport
     glViewport(0, 0, WIDTH, HEIGHT);
     // 窗口resize回调
-    glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height)
-                                   { glViewport(0, 0, width, height); });
+    glfwSetFramebufferSizeCallback(window,
+                                   [](GLFWwindow *window, int width, int height)
+                                   { 
+                                    WIDTH = width; 
+                                    HEIGHT = height; 
+                                    glViewport(0, 0, width, height); });
 
     return window;
 }
@@ -68,8 +72,6 @@ int main()
     shader.use();
 
     CubeMesh cube;
-    // std::string imagePath = "assets/awesomeface.png";
-    // cube.setTexture(imagePath);
 
     // VAO
     GLuint VAO;
@@ -99,63 +101,20 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, false, 2 * sizeof(float), (void *)(0 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    // 纹理1
-    unsigned int texture1;
-    glGenTextures(1, &texture1);            // 生成纹理缓冲
-    glActiveTexture(GL_TEXTURE0);           // 激活纹理单元0
-    glBindTexture(GL_TEXTURE_2D, texture1); // 绑定纹理
-    // 纹理设置
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // 纹理绑定
+    std::string imagePath = "assets/container.jpg";
+    cube.setTexture(imagePath);
+    cube.getTexture().bindTexture(shader, "u_texture", 0);
 
-    // 读取纹理数据并设置
-    int imageWidth, imageHeight, nChannels;
-    unsigned char *data = stbi_load("assets/container.jpg", &imageWidth, &imageHeight, &nChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
-
-    // 纹理2
-    unsigned int texture2;
-    glGenTextures(1, &texture2);
-    glActiveTexture(GL_TEXTURE1);           // 激活纹理单元1
-    glBindTexture(GL_TEXTURE_2D, texture2); // 绑定texture2
-    // 纹理设置
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    data = stbi_load("assets/awesomeface.png", &imageWidth, &imageHeight, &nChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
-
-    // glUniform1i(glGetUniformLocation(shader.getId(), "u_texture1"), 0);
-    shader.setInt("u_texture1", 0); // u_texture1使用纹理单元1
-    // glUniform1i(glGetUniformLocation(shader.getId(), "u_texture2"), 1);
-    shader.setInt("u_texture2", 1); // u_texture2使用纹理单元2
-
-    // 矩阵变换
-    glm::mat4 modelMtx = glm::mat4(1.0f);
-    // 获取u_modelMtx位置
+    // 获取uniform位置
     unsigned int u_modelMtx = glGetUniformLocation(shader.getId(), "u_modelMtx");
+    unsigned int u_viewMtx = glGetUniformLocation(shader.getId(), "u_viewMtx");
+    unsigned int u_projMtx = glGetUniformLocation(shader.getId(), "u_projMtx");
+
+    // 变换矩阵
+    glm::mat4 modelMtx = glm::mat4(1.0f);
+    glm::mat4 viewMtx = glm::lookAt(glm::vec3(2, 2, 2), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+    glm::mat4 projMtx = glm::perspective<float>(glm::pi<float>() / 3.0, WIDTH * 1.0 / HEIGHT, 1, 1000);
 
     // 窗口主循环
     while (!glfwWindowShouldClose(window))
@@ -165,14 +124,18 @@ int main()
 
         glBindVertexArray(VAO);
 
-        // 沿x轴旋转0.5度
-        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(1.0, 0.0, 0.0));
-        // 沿y轴旋转0.5度
-        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 1.0, 0.0));
-        // 沿z轴旋转0.5度
-        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 0.0, 1.0));
+        // model matrix
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(1.0, 0.0, 0.0)); // 沿x轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 1.0, 0.0)); // 沿y轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 0.0, 1.0)); // 沿z轴旋转0.5度
+
+        // projection matrix 放在循环里，因为WIDTH和HEIGHT可能会变化
+        projMtx = glm::perspective<float>(glm::pi<float>() / 3.0, WIDTH * 1.0 / HEIGHT, 1, 1000);
+
         // 设置获取u_modelMtx
         glUniformMatrix4fv(u_modelMtx, 1, GL_FALSE, glm::value_ptr(modelMtx));
+        glUniformMatrix4fv(u_viewMtx, 1, GL_FALSE, glm::value_ptr(viewMtx));
+        glUniformMatrix4fv(u_projMtx, 1, GL_FALSE, glm::value_ptr(projMtx));
 
         // glDrawArrays(GL_TRIANGLES, 0, cube.getPositions().size());
         glDrawElements(GL_TRIANGLES, cube.getIndices().size(), GL_UNSIGNED_INT, 0);
