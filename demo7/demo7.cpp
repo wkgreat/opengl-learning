@@ -125,9 +125,9 @@ int main()
         glBindVertexArray(VAO);
 
         // model matrix
-        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(1.0, 0.0, 0.0)); // 沿x轴旋转0.5度
-        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 1.0, 0.0)); // 沿y轴旋转0.5度
-        modelMtx = glm::rotate(modelMtx, glm::radians(0.5f), glm::vec3(0.0, 0.0, 1.0)); // 沿z轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.01f), glm::vec3(1.0, 0.0, 0.0)); // 沿x轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.01f), glm::vec3(0.0, 1.0, 0.0)); // 沿y轴旋转0.5度
+        modelMtx = glm::rotate(modelMtx, glm::radians(0.01f), glm::vec3(0.0, 0.0, 1.0)); // 沿z轴旋转0.5度
 
         // projection matrix 放在循环里，因为WIDTH和HEIGHT可能会变化
         projMtx = glm::perspective<float>(glm::pi<float>() / 3.0, WIDTH * 1.0 / HEIGHT, 1, 1000);
