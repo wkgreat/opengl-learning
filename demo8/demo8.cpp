@@ -1,5 +1,5 @@
 /*
-    坐标系统
+    绘制线框
 */
 #define STB_IMAGE_IMPLEMENTATION
 #include <glm/glm.hpp>
@@ -26,7 +26,7 @@ GLFWwindow *glInitWindow()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // glfw窗口
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "opengl-learning demo6", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "opengl-learning demo8", NULL, NULL);
     if (window == NULL)
     {
         std::cerr << "Failed to create GLFW window" << std::endl;
@@ -137,6 +137,15 @@ int main()
         glUniformMatrix4fv(u_viewMtx, 1, GL_FALSE, glm::value_ptr(viewMtx));
         glUniformMatrix4fv(u_projMtx, 1, GL_FALSE, glm::value_ptr(projMtx));
 
+        // 线框模式
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // 绘制线
+        glDrawElements(GL_TRIANGLES, cube.getIndices().size(), GL_UNSIGNED_INT, 0);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_POINT); // 绘制节点
+        glPointSize(10.0f);                         // 设置节点大小
+        glDrawElements(GL_TRIANGLES, cube.getIndices().size(), GL_UNSIGNED_INT, 0);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // 绘制面
         glDrawElements(GL_TRIANGLES, cube.getIndices().size(), GL_UNSIGNED_INT, 0);
 
         GLenum err = glGetError();

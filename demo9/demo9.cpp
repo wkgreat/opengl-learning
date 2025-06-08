@@ -1,5 +1,5 @@
 /*
-    坐标系统
+    几何着色器，绘制法线
 */
 #define STB_IMAGE_IMPLEMENTATION
 #include <glm/glm.hpp>
@@ -10,6 +10,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "shader.h"
+#include "normal_shader.h"
 
 #include "mesh.h"
 
@@ -26,7 +27,7 @@ GLFWwindow *glInitWindow()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // glfw窗口
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "opengl-learning demo6", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "opengl-learning demo8", NULL, NULL);
     if (window == NULL)
     {
         std::cerr << "Failed to create GLFW window" << std::endl;
@@ -63,13 +64,14 @@ int main()
     // GL配置
     glEnable(GL_DEPTH_TEST);
 
-    // shader and program
+    const char *normal_vertPath = "normal_shader.vs";
+    const char *normal_geomPath = "normal_shader.gs";
+    const char *normal_fragPath = "normal_shader.fs";
+    Shader normShader(normal_vertPath, normal_geomPath, normal_fragPath);
+
     const char *vertPath = "shader.vs";
     const char *fragPath = "shader.fs";
-
     Shader shader(vertPath, fragPath);
-
-    shader.use();
 
     CubeMesh cube;
 
@@ -82,8 +84,11 @@ int main()
     GLuint VBO_POSITION;
     glGenBuffers(1, &VBO_POSITION);
     glBindBuffer(GL_ARRAY_BUFFER, VBO_POSITION);
-
     glBufferData(GL_ARRAY_BUFFER, cube.getPositions().size() * sizeof(float), cube.getPositions().data(), GL_STATIC_DRAW);
+    shader.use();
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)(0 * sizeof(float)));
+    glEnableVertexAttribArray(0);
+    normShader.use();
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)(0 * sizeof(float)));
     glEnableVertexAttribArray(0);
 
@@ -93,28 +98,45 @@ int main()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO_INDEX);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, cube.getIndices().size() * sizeof(int), cube.getIndices().data(), GL_STATIC_DRAW);
 
+    // normal
+    GLuint VBO_NORMAL;
+    glGenBuffers(1, &VBO_NORMAL);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_NORMAL);
+    glBufferData(GL_ARRAY_BUFFER, cube.getNormals().size() * sizeof(float), cube.getNormals().data(), GL_STATIC_DRAW);
+    shader.use();
+    glVertexAttribPointer(1, 3, GL_FLOAT, false, 3 * sizeof(float), (void *)(0 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    normShader.use();
+    glVertexAttribPointer(1, 3, GL_FLOAT, false, 3 * sizeof(float), (void *)(0 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
     // texcoord
     GLuint VBO_TEXCOORD;
     glGenBuffers(1, &VBO_TEXCOORD);
     glBindBuffer(GL_ARRAY_BUFFER, VBO_TEXCOORD);
     glBufferData(GL_ARRAY_BUFFER, cube.getTexcoords().size() * sizeof(float), cube.getTexcoords().data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(1, 2, GL_FLOAT, false, 2 * sizeof(float), (void *)(0 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    shader.use();
+    glVertexAttribPointer(2, 2, GL_FLOAT, false, 2 * sizeof(float), (void *)(0 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    normShader.use();
+    glVertexAttribPointer(2, 2, GL_FLOAT, false, 2 * sizeof(float), (void *)(0 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    shader.use();
 
     // 纹理绑定
     std::string imagePath = "assets/container.jpg";
     cube.setTexture(imagePath);
     cube.getTexture().bindTexture(shader, "u_texture", 0);
 
-    // 获取uniform位置
-    unsigned int u_modelMtx = glGetUniformLocation(shader.getId(), "u_modelMtx");
-    unsigned int u_viewMtx = glGetUniformLocation(shader.getId(), "u_viewMtx");
-    unsigned int u_projMtx = glGetUniformLocation(shader.getId(), "u_projMtx");
+    normShader.use();
 
     // 变换矩阵
     glm::mat4 modelMtx = glm::mat4(1.0f);
     glm::mat4 viewMtx = glm::lookAt(glm::vec3(2, 2, 2), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
     glm::mat4 projMtx = glm::perspective<float>(glm::pi<float>() / 3.0, WIDTH * 1.0 / HEIGHT, 1, 1000);
+
+    glLineWidth(4.0);
 
     // 窗口主循环
     while (!glfwWindowShouldClose(window))
@@ -132,11 +154,16 @@ int main()
         // projection matrix 放在循环里，因为WIDTH和HEIGHT可能会变化
         projMtx = glm::perspective<float>(glm::pi<float>() / 3.0, WIDTH * 1.0 / HEIGHT, 1, 1000);
 
-        // 设置获取u_modelMtx
-        glUniformMatrix4fv(u_modelMtx, 1, GL_FALSE, glm::value_ptr(modelMtx));
-        glUniformMatrix4fv(u_viewMtx, 1, GL_FALSE, glm::value_ptr(viewMtx));
-        glUniformMatrix4fv(u_projMtx, 1, GL_FALSE, glm::value_ptr(projMtx));
+        shader.use();
+        shader.setMat4Float("u_modelMtx", glm::value_ptr(modelMtx));
+        shader.setMat4Float("u_viewMtx", glm::value_ptr(viewMtx));
+        shader.setMat4Float("u_projMtx", glm::value_ptr(projMtx));
+        glDrawElements(GL_TRIANGLES, cube.getIndices().size(), GL_UNSIGNED_INT, 0);
 
+        normShader.use();
+        normShader.setMat4Float("u_modelMtx", glm::value_ptr(modelMtx));
+        normShader.setMat4Float("u_viewMtx", glm::value_ptr(viewMtx));
+        normShader.setMat4Float("u_projMtx", glm::value_ptr(projMtx));
         glDrawElements(GL_TRIANGLES, cube.getIndices().size(), GL_UNSIGNED_INT, 0);
 
         GLenum err = glGetError();
@@ -150,10 +177,12 @@ int main()
     }
 
     // 释放资源
-    // glDeleteVertexArrays(1, &VAO);
-    // glDeleteBuffers(1, &VBO_POSITION);
-    // // glDeleteBuffers(1, &VBO_TEXCOORD);
-    // shader.destroy();
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO_POSITION);
+    glDeleteBuffers(1, &VBO_NORMAL);
+    glDeleteBuffers(1, &VBO_TEXCOORD);
+    normShader.destroy();
+    shader.destroy();
 
     glfwTerminate();
     return 0;
